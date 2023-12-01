@@ -162,188 +162,6 @@ def display_results(day, results, log=_LOG):
     return len(results)
 
 
-# **********************************************************************************************
-# ******************************* A Collection of example classes ******************************
-# **********************************************************************************************
-class BinTree:
-    """Binary Tree Node."""
-    def __init__(self, value):
-        """Instantiates an instance of the class."""
-        self.left = None
-        self.right = None
-        self.value = value
-
-    def show_tree(self, log_level="RESULT", log=_LOG):
-        """Display the Tree and all the leaves with the given logger."""
-        if self.left:
-            self.left.show_tree()
-        log_level_value = int(slt.getLogLevel(log_level.upper()))
-        log.log(log_level_value, "%s, ", self.value)
-        if self.right:
-            self.right.show_tree()
-
-    def insert(self, value):
-        """Insert data into tree in ascending order."""
-        if value < self.value:
-            if self.left is None:
-                self.left = value
-            else:
-                self.left.insert(value)
-        elif value > self.value:
-            if self.right is None:
-                self.right = value
-            else:
-                self.right.insert(value)
-        else:
-            raise RuntimeError("insert value=%s matches self.value" % value)
-
-
-class LineSeg:
-    """Line Segment class with start and end x and y coordinates."""
-    def __init__(self, x1, y1, x2, y2):
-        """Instantiates an instance of the class."""
-        assert isinstance(x1, int), f"x1={x1} invalid.  Must be int, not {type(x1)}"  # noqa: S101
-        assert isinstance(y1, int), f"y1={y1} invalid.  Must be int, not {type(y1)}"  # noqa: S101
-        assert isinstance(x2, int), f"x2={x2} invalid.  Must be int, not {type(x2)}"  # noqa: S101
-        assert isinstance(y2, int), f"y2={y2} invalid.  Must be int, not {type(y2)}"  # noqa: S101
-        self.x1 = x1
-        self.y1 = y1
-        self.x2 = x2
-        self.y2 = y2
-
-    def __str__(self):
-        """Return a string representation for the class instance."""
-        return "%3d, %3d -> %3d, %3d" % (self.x1, self.y1, self.x2, self.y2)
-
-
-class Knot:
-    """A knob location in a rope."""
-    def __init__(self, name, row, col, prv):
-        """Instantiates an instance of the class."""
-        assert isinstance(row, int), f"row={row} invalid.  Must be int, not {type(row)}"  # noqa: S101
-        assert isinstance(col, int), f"col={col} invalid.  Must be int, not {type(col)}"  # noqa: S101
-        self.name = name
-        self.row = row
-        self.col = col
-        self.prev = prv
-        self.next = None
-
-    def __str__(self):
-        """Return a string representation for the class instance."""
-        return "%s: %3d, %3d" % (self.name, self.row, self.col)
-
-
-class DirNode:
-    """A file system Directory class used to build a file system."""
-    def __init__(self, parent, name):
-        """Instantiates an instance of the class."""
-        self.name = name
-        # Is it better to store the path or dynamically build the path?
-        if parent is None:
-            self.parent = self
-            self.path = self.name
-        else:
-            self.parent = parent
-            self.path = parent.path + "." + self.name
-        self.sub_dirs = []
-        self.file_dict = {}
-        self.current = False
-
-    def __str__(self, prefix=""):
-        """Return a string representation for the class instance."""
-        ret_str = f"{prefix}{self.name} (dir)  "
-        if self.current:
-            ret_str += slt.FG.iyellow("<----------------------------------------")
-        ret_str += "\n"
-        for filename, size in self.file_dict.items():
-            ret_str += "  %s%s (file, size=%d\n" % (prefix, filename, size)
-        if self.sub_dirs:
-            for sub_dir in self.sub_dirs:
-                ret_str += sub_dir.__str__(prefix + "    ")
-        return ret_str
-
-    def get_size(self):
-        """Return the size."""
-        total_size = 0
-        for size in self.file_dict.values():
-            total_size += size
-        for sub_dir in self.sub_dirs:
-            total_size += sub_dir.get_size()
-        return total_size
-
-    def get_path(self):
-        """Return the path as a string."""
-        # Alternate to storing the path.  Not sure which is better
-        the_path = self.name
-        cur_dir = self
-        while cur_dir.parent.name != "/":
-            the_path = cur_dir.parent.name + "." + the_path
-            cur_dir = cur_dir.parent
-        return "/." + the_path
-
-
-class Graph:
-    """A class that creates a Graph Data structure."""
-    def __init__(self, nodes, init_graph):
-        """Instantiates an instance of the class."""
-        self.nodes = nodes
-        self.graph = self.construct_graph(nodes, init_graph)
-
-    def construct_graph(self, nodes, init_graph):  # noqa: PLR6301
-        """
-        This method makes sure that the graph is symmetrical.
-
-        In other words, if there's a path from node A to B with a value V, there needs to be a path from node B to node A with a value V.
-        """
-        graph = {}
-        for node in nodes:
-            graph[node] = {}
-
-        graph.update(init_graph)
-
-        for node, edges in graph.items():
-            for adjacent_node, value in edges.items():
-                if graph[adjacent_node].get(node, False) is False:
-                    graph[adjacent_node][node] = value
-
-        return graph
-
-    def get_nodes(self):
-        """Returns the nodes of the graph."""
-        return self.nodes
-
-    def get_outgoing_edges(self, node):
-        """Returns the neighbors of a node."""
-        connections = []
-        for out_node in self.nodes:
-            if self.graph[node].get(out_node, False) is not False:
-                connections.append(out_node)  # noqa: PERF401
-        return connections
-
-    def value(self, node1, node2):
-        """Returns the value of an edge between two nodes."""
-        return self.graph[node1][node2]
-
-
-def dfw(visited, cur_dir, big_dict, small_dict, min_size, log=_LOG):
-    """Recursive Depth-First Walk of tree."""
-    if cur_dir not in visited:
-        visited.add(cur_dir)
-        # Collect the sizes
-        cur_size = cur_dir.get_size()
-        # log.debug("cur_dir %s %d" % (cur_dir.name, cur_size))
-        if cur_size < 100000:
-            big_dict[cur_dir.path] = cur_size
-            # big_dict[cur_dir.get_path()] = cur_size  # Alternate
-        if cur_size > min_size:
-            small_dict[cur_dir.path] = cur_size
-            # small_dict[cur_dir.get_path()] = cur_size  # Alternate
-        for sub_dir in cur_dir.sub_dirs:
-            dfw(visited, sub_dir, big_dict, small_dict, min_size, log)
-# **********************************************************************************************
-# **********************************************************************************************
-
-
 def day1(use_example=False, log=_LOG):  # noqa: FBT002
     """
     Fat elves.
@@ -356,22 +174,26 @@ def day1(use_example=False, log=_LOG):  # noqa: FBT002
     """
     day = di = int(log.findCaller()[2][3:])
     results = [0, 0]
-    if use_example:
-        # di = "1000\n2000\n3000\n\n4000\n\n5000\n6000\n\n7000\n8000\n9000\n\n10000"
-        di = """two1nine
-eightwothree
-abcone2threexyz
-xtwone3four
-4nineeightseven2
-zoneight234
-7pqrstsixteen
-             """
-    data_tuple = get_input(di, "\n", str, override=False)  # noqa: F841
     for part2 in range(2):
+        if use_example:
+            if part2:
+                di = ("two1nine\n"
+                      "eightwothree\n"
+                      "abcone2threexyz\n"
+                      "xtwone3four\n"
+                      "4nineeightseven2\n"
+                      "zoneight234\n"
+                      "7pqrstsixteen")
+            else:
+                di = ("1abc2\n"
+                      "pqr3stu8vwx\n"
+                      "a1b2c3d4e5f\n"
+                      "treb7uchet\n")
+        data_tuple = get_input(di, "\n", str, override=False)
         for line in data_tuple:
-            log.debug("line: %s", line)
             digit_list = []
             if part2:
+                log.debug("line: %s", line)
                 # Jam the actual digit into the digit name
                 for digit, digit_name in enumerate(["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]):
                     index = line.find(digit_name)
@@ -902,3 +724,183 @@ def run_all(use_example=False, log=_LOG):  # noqa: FBT002
             output_str = output_str[:-2]
         log.result(output_str)
 
+# **********************************************************************************************
+# ******************************* A Collection of example classes ******************************
+# **********************************************************************************************
+class BinTree:
+    """Binary Tree Node."""
+    def __init__(self, value):
+        """Instantiates an instance of the class."""
+        self.left = None
+        self.right = None
+        self.value = value
+
+    def show_tree(self, log_level="RESULT", log=_LOG):
+        """Display the Tree and all the leaves with the given logger."""
+        if self.left:
+            self.left.show_tree()
+        log_level_value = int(slt.getLogLevel(log_level.upper()))
+        log.log(log_level_value, "%s, ", self.value)
+        if self.right:
+            self.right.show_tree()
+
+    def insert(self, value):
+        """Insert data into tree in ascending order."""
+        if value < self.value:
+            if self.left is None:
+                self.left = value
+            else:
+                self.left.insert(value)
+        elif value > self.value:
+            if self.right is None:
+                self.right = value
+            else:
+                self.right.insert(value)
+        else:
+            raise RuntimeError("insert value=%s matches self.value" % value)
+
+
+class LineSeg:
+    """Line Segment class with start and end x and y coordinates."""
+    def __init__(self, x1, y1, x2, y2):
+        """Instantiates an instance of the class."""
+        assert isinstance(x1, int), f"x1={x1} invalid.  Must be int, not {type(x1)}"  # noqa: S101
+        assert isinstance(y1, int), f"y1={y1} invalid.  Must be int, not {type(y1)}"  # noqa: S101
+        assert isinstance(x2, int), f"x2={x2} invalid.  Must be int, not {type(x2)}"  # noqa: S101
+        assert isinstance(y2, int), f"y2={y2} invalid.  Must be int, not {type(y2)}"  # noqa: S101
+        self.x1 = x1
+        self.y1 = y1
+        self.x2 = x2
+        self.y2 = y2
+
+    def __str__(self):
+        """Return a string representation for the class instance."""
+        return "%3d, %3d -> %3d, %3d" % (self.x1, self.y1, self.x2, self.y2)
+
+
+class Knot:
+    """A knob location in a rope."""
+    def __init__(self, name, row, col, prv):
+        """Instantiates an instance of the class."""
+        assert isinstance(row, int), f"row={row} invalid.  Must be int, not {type(row)}"  # noqa: S101
+        assert isinstance(col, int), f"col={col} invalid.  Must be int, not {type(col)}"  # noqa: S101
+        self.name = name
+        self.row = row
+        self.col = col
+        self.prev = prv
+        self.next = None
+
+    def __str__(self):
+        """Return a string representation for the class instance."""
+        return "%s: %3d, %3d" % (self.name, self.row, self.col)
+
+
+class DirNode:
+    """A file system Directory class used to build a file system."""
+    def __init__(self, parent, name):
+        """Instantiates an instance of the class."""
+        self.name = name
+        # Is it better to store the path or dynamically build the path?
+        if parent is None:
+            self.parent = self
+            self.path = self.name
+        else:
+            self.parent = parent
+            self.path = parent.path + "." + self.name
+        self.sub_dirs = []
+        self.file_dict = {}
+        self.current = False
+
+    def __str__(self, prefix=""):
+        """Return a string representation for the class instance."""
+        ret_str = f"{prefix}{self.name} (dir)  "
+        if self.current:
+            ret_str += slt.FG.iyellow("<----------------------------------------")
+        ret_str += "\n"
+        for filename, size in self.file_dict.items():
+            ret_str += "  %s%s (file, size=%d\n" % (prefix, filename, size)
+        if self.sub_dirs:
+            for sub_dir in self.sub_dirs:
+                ret_str += sub_dir.__str__(prefix + "    ")
+        return ret_str
+
+    def get_size(self):
+        """Return the size."""
+        total_size = 0
+        for size in self.file_dict.values():
+            total_size += size
+        for sub_dir in self.sub_dirs:
+            total_size += sub_dir.get_size()
+        return total_size
+
+    def get_path(self):
+        """Return the path as a string."""
+        # Alternate to storing the path.  Not sure which is better
+        the_path = self.name
+        cur_dir = self
+        while cur_dir.parent.name != "/":
+            the_path = cur_dir.parent.name + "." + the_path
+            cur_dir = cur_dir.parent
+        return "/." + the_path
+
+
+class Graph:
+    """A class that creates a Graph Data structure."""
+    def __init__(self, nodes, init_graph):
+        """Instantiates an instance of the class."""
+        self.nodes = nodes
+        self.graph = self.construct_graph(nodes, init_graph)
+
+    def construct_graph(self, nodes, init_graph):  # noqa: PLR6301
+        """
+        This method makes sure that the graph is symmetrical.
+
+        In other words, if there's a path from node A to B with a value V, there needs to be a path from node B to node A with a value V.
+        """
+        graph = {}
+        for node in nodes:
+            graph[node] = {}
+
+        graph.update(init_graph)
+
+        for node, edges in graph.items():
+            for adjacent_node, value in edges.items():
+                if graph[adjacent_node].get(node, False) is False:
+                    graph[adjacent_node][node] = value
+
+        return graph
+
+    def get_nodes(self):
+        """Returns the nodes of the graph."""
+        return self.nodes
+
+    def get_outgoing_edges(self, node):
+        """Returns the neighbors of a node."""
+        connections = []
+        for out_node in self.nodes:
+            if self.graph[node].get(out_node, False) is not False:
+                connections.append(out_node)  # noqa: PERF401
+        return connections
+
+    def value(self, node1, node2):
+        """Returns the value of an edge between two nodes."""
+        return self.graph[node1][node2]
+
+
+def dfw(visited, cur_dir, big_dict, small_dict, min_size, log=_LOG):
+    """Recursive Depth-First Walk of tree."""
+    if cur_dir not in visited:
+        visited.add(cur_dir)
+        # Collect the sizes
+        cur_size = cur_dir.get_size()
+        # log.debug("cur_dir %s %d" % (cur_dir.name, cur_size))
+        if cur_size < 100000:
+            big_dict[cur_dir.path] = cur_size
+            # big_dict[cur_dir.get_path()] = cur_size  # Alternate
+        if cur_size > min_size:
+            small_dict[cur_dir.path] = cur_size
+            # small_dict[cur_dir.get_path()] = cur_size  # Alternate
+        for sub_dir in cur_dir.sub_dirs:
+            dfw(visited, sub_dir, big_dict, small_dict, min_size, log)
+# **********************************************************************************************
+# **********************************************************************************************
