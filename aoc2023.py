@@ -164,7 +164,7 @@ def display_results(day, results, log=_LOG):
 
 def day1(use_example=False, log=_LOG):  # noqa: FBT002
     """
-    Fat elves.
+    Trebuchet calibration.
 
     Args:
         use_example (bool): Use the example data set
