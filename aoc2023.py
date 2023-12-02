@@ -215,7 +215,7 @@ def day1(use_example=False, log=_LOG):  # noqa: FBT002
 
 def day2(use_example=False, log=_LOG):  # noqa: FBT002
     """
-    Unsolved.
+    Cube Conundrum.
 
     Args:
         use_example (bool): Use the example data set
@@ -225,9 +225,44 @@ def day2(use_example=False, log=_LOG):  # noqa: FBT002
     """
     day = di = int(log.findCaller()[2][3:])
     if use_example:
-        di = "foo"
-    data_tuple = get_input(di, "\n", str, override=False)  # noqa: F841
+        di = ("Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green\n"
+              "Game 2: 1 blue, 2 green; 3 green, 4 blue, 1 red; 1 green, 1 blue\n"
+              "Game 3: 8 green, 6 blue, 20 red; 5 blue, 4 red, 13 green; 5 green, 1 red\n"
+              "Game 4: 1 green, 3 red, 6 blue; 3 green, 6 red; 3 green, 15 blue, 14 red\n"
+              "Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green\n")
+    data_tuple = get_input(di, "\n", str, override=False)
     results = []
+
+    # Parse the strings into a list of dictionaries
+    game_list = []
+    for line in data_tuple:
+        max_count_dict = {"red": 0, "green": 0, "blue": 0}
+        # Throw away the game id and split into rounds e.g. "3 blue, 4 red"
+        round_list = line.split(":")[1].split(";")
+        for round_str in round_list:
+            # split into sets of colors e.g. "3 blue"
+            color_list = round_str.split(",")
+            for entry in color_list:
+                color_count_list = entry.rsplit()  # e.g. ['3', 'blue']
+                # Keep track of the maximum cubes seen for each color in this game
+                max_count_dict[color_count_list[1]] = max(max_count_dict[color_count_list[1]], int(color_count_list[0]))
+        game_list.append(max_count_dict)
+
+    for g_id, entry in enumerate(game_list, start=1):
+        log.debug("Game %d: %s", g_id, entry)
+    log.debug("")
+
+    possible_games_sum = 0
+    power_sum = 0
+    for g_id, game_count_dict in enumerate(game_list, start=1):
+        power = game_count_dict["red"] * game_count_dict["green"] * game_count_dict["blue"]
+        power_sum += power
+        output_str = f"game {id} power={power}"
+        if game_count_dict["red"] <= 12 and game_count_dict["green"] <= 13 and game_count_dict["blue"] <= 14:
+            output_str += " and is possible"
+            possible_games_sum += g_id
+        log.debug(output_str)
+    results.extend((possible_games_sum, power_sum))
 
     return display_results(day=day, results=results, log=log)
 
