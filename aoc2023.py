@@ -267,26 +267,37 @@ def day2(use_example=False, log=_LOG):  # noqa: FBT002
     return display_results(day=day, results=results, log=log)
 
 
-def show_diagram(diagram, cur_r=-1, cur_c=-1, hl_r=-1, hl_c=-1, log=_LOG):
+def show_diagram(diagram, cur_r=-1, cur_c=-1, hl_r=-1, hl_c=-1, log_level="debug", log=_LOG):
     """
     Show the diagram.
 
-    :param diagram:  2D list
+    Args:
+        diagram (list): 2D list
+        cur_r (int):  Current Row index
+        cur_c (int):  Current Column index
+        hl_r (int):  A Row index to highlight
+        hl_c (int):  A Column index to hightlight
+        log_level (str): A description of the logging level
+        log (slt.EasyLogger, optional): Logger object
+    Returns:
+        None
     """
+    log_level_value = int(slt.getLogLevel(log_level.upper()))
     for r, row in enumerate(diagram):
         output_str = ""
         for c, cell in enumerate(row):
+            cell_str = f"{cell} "
             if r == cur_r and c == cur_c:
                 if r == hl_r and c == hl_c:  # don't inspect yourself
-                    output_str += slt.FG.ired("%s " % cell)
+                    output_str += slt.FG.ired(cell_str)
                 else:
-                    output_str += slt.FG.icyan("%s " % cell)
+                    output_str += slt.FG.icyan(cell_str)
             elif r == hl_r and c == hl_c:
-                output_str += slt.FG.igreen("%s " % cell)
+                output_str += slt.FG.igreen(cell_str)
             else:
-                output_str += "%s " % cell
-        log.debug(output_str)
-    log.debug("")
+                output_str += cell_str
+        log.log(log_level_value, output_str)
+    log.log(log_level_value, "")
 
 
 def day3(use_example=False, log=_LOG):  # noqa: FBT002
@@ -324,6 +335,7 @@ def day3(use_example=False, log=_LOG):  # noqa: FBT002
         row_list.append(".")
         diagram.append(row_list)
     diagram.append(first_last_row)
+    # show_diagram(diagram, log=log)
 
     # Walk the diagram looking for numbers
     part_number = 0
@@ -357,11 +369,11 @@ def day3(use_example=False, log=_LOG):  # noqa: FBT002
     log.debug("*" * 79)
 
     # Part 2
-    # Walk the diagram looking for symbols
+    # Walk the diagram looking for Gears (*)
     gear_ratio_sum = 0
     for r, row in enumerate(diagram):
         for c, cell in enumerate(row):
-            if cell != "." and not cell.isalnum():  # symbol
+            if cell == "*":
                 # Look for neighboring numbers
                 number_neighbors = []
                 for row_mod in [-1, 0, 1]:
