@@ -267,6 +267,28 @@ def day2(use_example=False, log=_LOG):  # noqa: FBT002
     return display_results(day=day, results=results, log=log)
 
 
+def show_diagram(diagram, cur_r=-1, cur_c=-1, hl_r=-1, hl_c=-1, log=_LOG):
+    """
+    Show the diagram.
+
+    :param diagram:  2D list
+    """
+    for r, row in enumerate(diagram):
+        output_str = ""
+        for c, cell in enumerate(row):
+            if r == cur_r and c == cur_c:
+                if r == hl_r and c == hl_c:  # don't inspect yourself
+                    output_str += slt.FG.ired("%s " % cell)
+                else:
+                    output_str += slt.FG.icyan("%s " % cell)
+            elif r == hl_r and c == hl_c:
+                output_str += slt.FG.igreen("%s " % cell)
+            else:
+                output_str += "%s " % cell
+        log.debug(output_str)
+    log.debug("")
+
+
 def day3(use_example=False, log=_LOG):  # noqa: FBT002
     """
     Unsolved.
@@ -279,10 +301,98 @@ def day3(use_example=False, log=_LOG):  # noqa: FBT002
     """
     day = di = int(log.findCaller()[2][3:])
     if use_example:
-        di = ""
-    get_input(di, "\n", str, override=False)
+        di = ("467..114..\n"
+              "...*......\n"
+              "..35..633.\n"
+              "......#...\n"
+              "617*......\n"
+              ".....+.58.\n"
+              "..592.....\n"
+              "......755.\n"
+              "...$.*....\n"
+              ".664.598..\n")
+    data_tuple = get_input(di, "\n", str, override=False)
     results = []
 
+    # Create the diagram
+    diagram = []
+    first_last_row = ["."] * (len(data_tuple[0]) + 2)
+    diagram.append(first_last_row)
+    for line in data_tuple:
+        row_list = ["."]
+        row_list.extend(list(line))
+        row_list.append(".")
+        diagram.append(row_list)
+    diagram.append(first_last_row)
+
+    # Walk the diagram looking for numbers
+    part_number = 0
+    cur_num_str = None
+    valid = False
+    for r, row in enumerate(diagram):
+        for c, cell in enumerate(row):
+            if cell.isdigit():
+                if cur_num_str is None:  # first digit of number
+                    cur_num_str = cell
+                    valid = False
+                else:
+                    cur_num_str += cell
+                # Search the neighbors for a symbol
+                for row_mod in [-1, 0, 1]:
+                    for col_mod in [-1, 0, 1]:
+                        if row_mod == 0 and col_mod == 0:  # Skip yourself
+                            continue
+                        nr = r + row_mod
+                        nc = c + col_mod
+                        if diagram[nr][nc] != "." and not diagram[nr][nc].isalnum():  # symbol
+                            valid = True
+            elif cur_num_str is not None:  # end of the number
+                if valid:
+                    log.debug("Found Valid Part Number %s", cur_num_str)
+                    part_number += int(cur_num_str)
+                # Reset to look for the next number
+                cur_num_str = None
+                valid = False
+    results.append(part_number)
+    log.debug("*" * 79)
+
+    # Part 2
+    # Walk the diagram looking for symbols
+    gear_ratio_sum = 0
+    for r, row in enumerate(diagram):
+        for c, cell in enumerate(row):
+            if cell != "." and not cell.isalnum():  # symbol
+                # Look for neighboring numbers
+                number_neighbors = []
+                for row_mod in [-1, 0, 1]:
+                    for col_mod in [-1, 0, 1]:
+                        if row_mod == 0 and col_mod == 0:  # Skip yourself
+                            continue
+                        nr = r + row_mod
+                        nc = c + col_mod
+                        if diagram[nr][nc].isdigit():  # Found a number
+                            # figure out the whole number
+                            num_str = diagram[nr][nc]
+                            # look left
+                            tmp_col = nc - 1
+                            while diagram[nr][tmp_col].isdigit():
+                                num_str = diagram[nr][tmp_col] + num_str
+                                tmp_col -= 1
+                            # look right
+                            tmp_col = nc + 1
+                            while diagram[nr][tmp_col].isdigit():
+                                num_str += diagram[nr][tmp_col]
+                                tmp_col += 1
+                            if int(num_str) not in number_neighbors:
+                                number_neighbors.append(int(num_str))
+                if len(number_neighbors) > 1:
+                    # Calculate gear ratio
+                    gear_ratio = 1
+                    for entry in number_neighbors:
+                        gear_ratio *= entry
+                    log.debug("Found Gear Ratio %6d: %s", gear_ratio, number_neighbors)
+                    gear_ratio_sum += gear_ratio
+    results.append(gear_ratio_sum)
     return display_results(day=day, results=results, log=log)
 
 
