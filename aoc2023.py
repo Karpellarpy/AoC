@@ -410,7 +410,7 @@ def day3(use_example=False, log=_LOG):  # noqa: FBT002
 
 def day4(use_example=False, log=_LOG):  # noqa: FBT002
     """
-    Unsolved.
+    Scratchcards puzzle.
 
     Args:
         use_example (bool): Use the example data set
@@ -420,10 +420,44 @@ def day4(use_example=False, log=_LOG):  # noqa: FBT002
     """
     day = di = int(log.findCaller()[2][3:])
     if use_example:
-        di = ""
-    data_tuple = get_input(di, "\n", str, override=False)  # noqa: F841
-    results = []
+        di = ("Card 1: 41 48 83 86 17 | 83 86  6 31 17  9 48 53\n"
+              "Card 2: 13 32 20 16 61 | 61 30 68 82 17 32 24 19\n"
+              "Card 3:  1 21 53 59 44 | 69 82 63 72 16 21 14  1\n"
+              "Card 4: 41 92 73 84 69 | 59 84 76 51 58  5 54 83\n"
+              "Card 5: 87 83 26 28 32 | 88 30 70 12 93 22 82 36\n"
+              "Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11\n")
+    data_tuple = get_input(di, "\n", str, override=False)
+    results = [0, 0]
 
+    card_values = [0]  # dummy
+    for line in data_tuple:
+        card_str = line.split(":")[1]  # throw away the card id
+        # Create 2 sets of numbers and the intersection is the number of wins
+        win_num_str, num_str = card_str.split("|")
+        win_num_set = {int(i) for i in win_num_str.split()}
+        num_set = {int(i) for i in num_str.split()}
+        win_set = win_num_set.intersection(num_set)
+        log.debug("win_set: %s", win_set)
+        card_values.append(len(win_set))
+        # calculate points
+        if win_set:
+            points = 2**(len(win_set) - 1)
+            log.debug("points: %d", points)
+            results[0] += points
+
+    log.debug("*" * 79)
+
+    # Keep track of the number of cards for each card id
+    card_count = [1] * len(card_values)
+    card_count[0] = 0  # dummy
+    for card_idx, entry in enumerate(card_count):
+        log.debug("idx: %d - %d wins", card_idx, card_values[card_idx])
+        # add the copies
+        for card_value in range(card_values[card_idx]):
+            card_count[card_idx + 1 + card_value] += (1 * entry)
+        log.debug("card_count: %s", card_count)
+
+    results[1] = sum(card_count)
     return display_results(day=day, results=results, log=log)
 
 
