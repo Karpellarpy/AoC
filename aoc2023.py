@@ -12,6 +12,7 @@ import datetime  # noqa: F401
 # import numpy
 from os import path
 import svtools.logging.toolbox as slt
+from collections import OrderedDict
 
 # Never did spend the time to work out how to get OAuth to work so this code expects you to
 # manually copy over your session cookie value.
@@ -454,7 +455,7 @@ def day4(use_example=False, log=_LOG):  # noqa: FBT002
         log.debug("idx: %d - %d wins", card_idx, card_values[card_idx])
         # add the copies
         for card_value in range(card_values[card_idx]):
-            card_count[card_idx + 1 + card_value] += (1 * entry)
+            card_count[card_idx + 1 + card_value] += entry
         log.debug("card_count: %s", card_count)
 
     results[1] = sum(card_count)
@@ -463,7 +464,7 @@ def day4(use_example=False, log=_LOG):  # noqa: FBT002
 
 def day5(use_example=False, log=_LOG):  # noqa: FBT002
     """
-    Unsolved.
+    If you give a seed a fertilizer.
 
     Args:
         use_example (bool): Use the example data set
@@ -473,10 +474,166 @@ def day5(use_example=False, log=_LOG):  # noqa: FBT002
     """
     day = di = int(log.findCaller()[2][3:])
     if use_example:
-        di = ""
-    data_tuple = get_input(di, "\n", str, override=False)  # noqa: F841
+        di = """seeds: 79 14 55 13
+
+seed-to-soil map:
+50 98 2
+52 50 48
+
+soil-to-fertilizer map:
+0 15 37
+37 52 2
+39 0 15
+
+fertilizer-to-water map:
+49 53 8
+0 11 42
+42 0 7
+57 7 4
+
+water-to-light map:
+88 18 7
+18 25 70
+
+light-to-temperature map:
+45 77 23
+81 45 19
+68 64 13
+
+temperature-to-humidity map:
+0 69 1
+1 0 69
+
+humidity-to-location map:
+60 56 37
+56 93 4
+"""
+    data_tuple = get_input(di, "\n", str, override=False)
     results = []
 
+    seed_list = []
+    # Each map has a list of dictionaries with format {"source_start": #, "source_end": #, "offset": #}
+    maps = OrderedDict()
+    maps["seed-to-soil"] = []
+    maps["soil-to-fertilizer"] = []
+    maps["fertilizer-to-water"] = []
+    maps["water-to-light"] = []
+    maps["light-to-temperature"] = []
+    maps["temperature-to-humidity"] = []
+    maps["humidity-to-location"] = []
+    cur_key = None
+    for line in data_tuple:
+        # log.debug("line: %s", line)
+        if line.count("seeds:"):
+            seed_list = [int(i) for i in line.split(":")[1].split()]
+        elif not line:
+            cur_key = None
+        elif line[0].isdigit():
+            if cur_key not in maps:
+                err_str = f"cur_key {cur_key} not in maps"
+                raise RuntimeError(err_str)
+            num_list = [int(i) for i in line.split()]
+            destination_start = num_list[0]
+            source_start = num_list[1]
+            range_length = num_list[2]
+            maps[cur_key].append({"source_start": source_start,
+                                  "source_end": source_start + range_length - 1,
+                                  "offset": destination_start - source_start})
+        else:  # map name
+            cur_key = line.split()[0]
+
+    # Show the maps
+    log.debug("")
+    for map_key, map_list in maps.items():
+        log.debug("%s", map_key)
+        for entry in map_list:
+            output_str = ""
+            for key, value in entry.items():
+                output_str += f"  {key}: {value}"
+            log.debug(output_str)
+
+    # Use the maps to determine the location of each seed
+    locations = []
+    for seed in seed_list:
+        cur_value = next_value = seed
+        log.debug("")
+        log.debug("seed %d", seed)
+        for mapping_key, map_dict in maps.items():
+            next_value = cur_value
+            for entry in map_dict:
+                if entry["source_start"] <= cur_value <= entry["source_end"]:
+                    next_value = cur_value + entry["offset"]
+            cur_value = next_value
+            log.debug("%s: %d", mapping_key, next_value)
+        locations.append(next_value)
+    results.append(min(locations))
+
+    # Part 2, go backwards from walking up locations back to a seed, then see if it falls within the seed ranges
+    seed_ranges = []
+    for i in range(0, len(seed_list), 2):
+        seed_ranges.append((seed_list[i], seed_list[i] + seed_list[i + 1]))  # noqa: PERF401
+    log.debug("seed_ranges:")
+    for entry in seed_ranges:
+        log.debug("  %10d - %10d  (%d)", entry[0], entry[1], entry[1] - entry[0])
+
+    start_time = time.time()
+    # htl_idx = 0
+    # location_offset = 0
+    # location = -1
+    location = -1
+    while 1:
+        location += 1
+        # if location >= maps["humidity-to-location"][htl_idx]["source_end"]:
+        #     htl_idx += 1
+        #     location_offset = 0
+        # location = maps["humidity-to-location"][htl_idx]["source_start"] + maps["humidity-to-location"][htl_idx]["offset"] + location_offset
+        # location_offset += 1
+
+        cur_value = humidity = location
+        for entry in maps["humidity-to-location"]:
+            if entry["source_start"] + entry["offset"] <= cur_value <= entry["source_end"] + entry["offset"]:
+                humidity = cur_value - entry["offset"]
+
+        cur_value = temperature = humidity
+        for entry in maps["temperature-to-humidity"]:
+            if entry["source_start"] + entry["offset"] <= cur_value <= entry["source_end"] + entry["offset"]:
+                temperature = cur_value - entry["offset"]
+
+        cur_value = light = temperature
+        for entry in maps["light-to-temperature"]:
+            if entry["source_start"] + entry["offset"] <= cur_value <= entry["source_end"] + entry["offset"]:
+                light = cur_value - entry["offset"]
+
+        cur_value = water = light
+        for entry in maps["water-to-light"]:
+            if entry["source_start"] + entry["offset"] <= cur_value <= entry["source_end"] + entry["offset"]:
+                water = cur_value - entry["offset"]
+
+        cur_value = fertilizer = water
+        for entry in maps["fertilizer-to-water"]:
+            if entry["source_start"] + entry["offset"] <= cur_value <= entry["source_end"] + entry["offset"]:
+                fertilizer = cur_value - entry["offset"]
+
+        cur_value = soil = fertilizer
+        for entry in maps["soil-to-fertilizer"]:
+            if entry["source_start"] + entry["offset"] <= cur_value <= entry["source_end"] + entry["offset"]:
+                soil = cur_value - entry["offset"]
+
+        cur_value = seed = soil
+        for entry in maps["seed-to-soil"]:
+            if entry["source_start"] + entry["offset"] <= cur_value <= entry["source_end"] + entry["offset"]:
+                seed = cur_value - entry["offset"]
+
+        # log.debug("location %d maps to seed %d", location, seed)
+        seed_found = False
+        for entry in seed_ranges:
+            if entry[0] <= seed <= entry[1]:
+                results.append(location)
+                seed_found = True
+                break
+        if seed_found:
+            break
+    log.result("P2 took %d seconds", time.time() - start_time)
     return display_results(day=day, results=results, log=log)
 
 
