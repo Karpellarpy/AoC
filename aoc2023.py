@@ -466,6 +466,8 @@ def day5(use_example=False, log=_LOG):  # noqa: FBT002
     """
     If you give a seed a fertilizer.
 
+    Redo P2 tracking ranges.
+
     Args:
         use_example (bool): Use the example data set
         log (slt.EasyLogger, optional): Logger object
@@ -474,40 +476,39 @@ def day5(use_example=False, log=_LOG):  # noqa: FBT002
     """
     day = di = int(log.findCaller()[2][3:])
     if use_example:
-        di = """seeds: 79 14 55 13
-
-seed-to-soil map:
-50 98 2
-52 50 48
-
-soil-to-fertilizer map:
-0 15 37
-37 52 2
-39 0 15
-
-fertilizer-to-water map:
-49 53 8
-0 11 42
-42 0 7
-57 7 4
-
-water-to-light map:
-88 18 7
-18 25 70
-
-light-to-temperature map:
-45 77 23
-81 45 19
-68 64 13
-
-temperature-to-humidity map:
-0 69 1
-1 0 69
-
-humidity-to-location map:
-60 56 37
-56 93 4
-"""
+        di = ("seeds: 79 14 55 13\n"
+              "\n"
+              "seed-to-soil map:\n"
+              "50 98 2\n"
+              "52 50 48\n"
+              "\n"
+              "soil-to-fertilizer map:\n"
+              "0 15 37\n"
+              "37 52 2\n"
+              "39 0 15\n"
+              "\n"
+              "fertilizer-to-water map:\n"
+              "49 53 8\n"
+              "0 11 42\n"
+              "42 0 7\n"
+              "57 7 4\n"
+              "\n"
+              "water-to-light map:\n"
+              "88 18 7\n"
+              "18 25 70\n"
+              "\n"
+              "light-to-temperature map:\n"
+              "45 77 23\n"
+              "81 45 19\n"
+              "68 64 13\n"
+              "\n"
+              "temperature-to-humidity map:\n"
+              "0 69 1\n"
+              "1 0 69\n"
+              "\n"
+              "humidity-to-location map:\n"
+              "60 56 37\n"
+              "56 93 4\n")
     data_tuple = get_input(di, "\n", str, override=False)
     results = []
 
@@ -639,7 +640,7 @@ humidity-to-location map:
 
 def day6(use_example=False, log=_LOG):  # noqa: FBT002
     """
-    Unsolved.
+    Wait For It.
 
     Args:
         use_example (bool): Use the example data set
@@ -649,9 +650,46 @@ def day6(use_example=False, log=_LOG):  # noqa: FBT002
     """
     day = di = int(log.findCaller()[2][3:])
     if use_example:
-        di = ""
-    data_tuple = get_input(di, "\n", None, override=False)  # noqa: F841
-    results = []
+        di = ("Time:      7  15   30\n"
+              "Distance:  9  40  200\n")
+    data_tuple = get_input(di, "\n", None, override=False)
+    results = [1, 1]
+    for part2 in range(2):
+        log.debug("")
+        log.debug("Part%d", part2 + 1)
+        race_list = []
+        if part2:
+            time_str = data_tuple[0].split(":")[1].split()
+            time_list = [int("".join(time_str))]
+            dist_str = data_tuple[1].split(":")[1].split()
+            dist_list = [int("".join(dist_str))]
+        else:
+            time_list = [int(i) for i in data_tuple[0].split(":")[1].split()]
+            dist_list = [int(i) for i in data_tuple[1].split(":")[1].split()]
+        if len(time_list) != len(dist_list):
+            err_str = "Puzzle input not formatted as expected"
+            raise RuntimeError(err_str)
+        for i, entry in enumerate(time_list):
+            race_list.append({"max_time": entry, "min_distance": dist_list[i], "ways_to_win": 0})
+
+        for race_num, race_dict in enumerate(race_list):
+            log.debug("Race %d:", race_num)
+            button_time = 0
+            started_winning = False
+            while button_time < race_dict["max_time"]:
+                time_left = race_dict["max_time"] - button_time
+                distance = button_time * time_left
+                output_str = f"button {button_time}ms travels {distance}mm"
+                if distance > race_dict["min_distance"]:
+                    race_dict["ways_to_win"] += 1
+                    output_str += " and wins"
+                    if not started_winning:
+                        started_winning = True
+                elif started_winning:
+                    break
+                # log.debug(output_str)
+                button_time += 1
+            results[part2] *= race_dict["ways_to_win"]
 
     return display_results(day=day, results=results, log=log)
 
