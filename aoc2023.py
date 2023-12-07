@@ -693,10 +693,24 @@ def day6(use_example=False, log=_LOG):  # noqa: FBT002
 
     return display_results(day=day, results=results, log=log)
 
+class Hand:
+    """A structure to hold information about a hand of cards."""
+    def __init__(self, cards, bid):
+        """Instantiates an instance of the class."""
+        self.cards = cards
+        self.bid = bid
+        self.worth = None
+
+    def __str__(self):
+        """Return a string representation of the class instance."""
+        ret_str = f"{self.cards} bid: {self.bid:4d}  worth: {self.worth}"
+        if "J" in self.cards:
+            ret_str += "  <-----------------"
+        return ret_str
 
 def day7(use_example=False, log=_LOG):  # noqa: FBT002
     """
-    Unsolved.
+    Camel Cards.
 
     Args:
         use_example (bool): Use the example data set
@@ -706,9 +720,98 @@ def day7(use_example=False, log=_LOG):  # noqa: FBT002
     """
     day = di = int(log.findCaller()[2][3:])
     if use_example:
-        di = ""
+        di = ("32T3K 765\n"
+              "T55J5 684\n"
+              "KK677 28\n"
+              "KTJJT 220\n"
+              "QQQJA 483\n")
     data_tuple = get_input(di, "\n", str, override=False)  # noqa: F841
     results = []
+
+    for part2 in range(2):
+
+        hands_list = []
+        for line in data_tuple:
+            cards, bid = line.split()
+            hands_list.append(Hand(cards, int(bid)))
+
+        # determine worth
+        # worth_dict for readability
+        worth_dict = {"high card": 0, "one pair": 1, "two pair": 2, "three of kind": 3,
+                    "full house": 4, "four of kind": 5, "five of kind": 6}
+        for hand in hands_list:
+            log.debug(hand.cards)
+            # Track the count of each unique card in the hand
+            card_count = {}
+            for card in hand.cards:
+                if card in card_count:
+                    card_count[card] += 1
+                else:
+                    card_count[card] = 1
+            # apply jokers to the next highest card count
+            if part2 and "J" in card_count and len(card_count) > 1:
+                highest_count = -1
+                highest_key = None
+                for key, value in card_count.items():
+                    if key != "J" and value > highest_count:
+                        highest_count = value
+                        highest_key = key
+                card_count[highest_key] += card_count["J"]
+                card_count.pop("J")
+
+            # Use the card_count dictionary to determine the sortable worth of the hand
+            len_card_count = len(card_count)
+            if len_card_count == 5:
+                hand.worth = worth_dict["high card"]
+            elif len_card_count == 4:
+                hand.worth = worth_dict["one pair"]
+            elif len_card_count == 3:
+                if 3 in card_count.values():
+                    hand.worth = worth_dict["three of kind"]
+                else:
+                    hand.worth = worth_dict["two pair"]
+            elif len_card_count == 2:
+                if 4 in card_count.values():
+                    hand.worth = worth_dict["four of kind"]
+                else:
+                    hand.worth = worth_dict["full house"]
+            else:  # 1 card
+                hand.worth = worth_dict["five of kind"]
+
+        # sort the hands based on worth
+        hands_list = sorted(hands_list, key=lambda hand: hand.worth)
+        log.debug("hands_list:")
+        for entry in hands_list:
+            log.debug(entry)
+
+        card_strength = {"2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9, "T": 10, "J": 11, "Q": 12, "K": 13, "A": 14}
+        if part2:
+            card_strength["J"] = 1
+        # Break the ties by comparing each character left to right.
+        # Bubble sort based on the current card index
+        len_hands_list = len(hands_list)
+        for i in range(len_hands_list):
+            swapped = False
+            for j in range(len_hands_list - i - 1):
+                if hands_list[j].worth != hands_list[j + 1].worth:  # not a tie of the same hand type
+                    continue
+                # log.debug("%s ties with", hands_list[j])
+                # log.debug("%s", hands_list[j + 1])
+                for card_index in range(5):
+                    # current card is greater so swap
+                    if card_strength[hands_list[j].cards[card_index]] > card_strength[hands_list[j + 1].cards[card_index]]:
+                        hands_list[j], hands_list[j + 1] = hands_list[j + 1], hands_list[j]
+                        swapped = True
+                    # If the current card is tied, then go to the next card
+                    if card_strength[hands_list[j].cards[card_index]] != card_strength[hands_list[j + 1].cards[card_index]]:
+                        break
+            if not swapped:
+                break
+
+        total_winnings = 0
+        for i, entry in enumerate(hands_list, start=1):
+            total_winnings += (i * entry.bid)
+        results.append(total_winnings)
 
     return display_results(day=day, results=results, log=log)
 
