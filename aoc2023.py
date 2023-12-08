@@ -7,6 +7,7 @@ import copy  # noqa: F401
 import pickle
 import socket
 import requests
+import numpy as np
 # import itertools
 import datetime  # noqa: F401
 # import numpy
@@ -818,7 +819,11 @@ def day7(use_example=False, log=_LOG):  # noqa: FBT002
 
 def day8(use_example=False, log=_LOG):  # noqa: FBT002
     """
-    Unsolved.
+    Haunted Wasteland.
+
+    Part 1 works
+
+    The Markov Chain attempt here doesn't work at all, and I barely understand it anyway.
 
     Args:
         use_example (bool): Use the example data set
@@ -828,9 +833,110 @@ def day8(use_example=False, log=_LOG):  # noqa: FBT002
     """
     day = di = int(log.findCaller()[2][3:])
     if use_example:
-        di = ""
+        di = ("LLR\n"
+              "\n"
+              "AAA = (BBB, BBB)\n"
+              "BBB = (AAA, ZZZ)\n"
+              "ZZZ = (ZZZ, ZZZ)\n")
     data_tuple = get_input(di, "\n", str, override=False)  # noqa: F841
     results = []
+
+    graph_dict = {}
+    directions = ""
+    blank_line_found = False
+    # Track which row/col in the transition matrix maps to which 'state' aka "AAA"
+    cur_row = 0
+    state_indices = {}
+
+    non_absorbing_states = {}
+    absorbing_states = {}
+    for line in data_tuple:
+        log.debug("line: %s", line)
+        if not line:
+            blank_line_found = True
+            continue
+        if not blank_line_found:
+            directions += line
+            continue
+
+        matches = re.findall(r"\b\w+\b", line)  # ["AAA", "BBB", "CCC"]
+        if len(matches) != 3:
+            err_str = f"Expected 3 entries in {matches}"
+            raise RuntimeError(err_str)
+        # just for readability
+        cur_state = matches[0]
+        left_state = matches[1]
+        right_state = matches[2]
+        graph_dict[cur_state] = (left_state, right_state)
+        state_indices[cur_state] = cur_row
+        cur_row += 1
+        if left_state == right_state:
+            absorbing_states[cur_state] = (left_state, right_state)
+        else:
+            non_absorbing_states[cur_state] = (left_state, right_state)
+
+    # follow the directions until you reach ZZZ
+    d_idx = -1
+    len_directions = len(directions)
+    cur_loc = "AAA"
+    steps = 0
+    while 1:
+        d_idx = (d_idx + 1) % len_directions
+        direction = directions[d_idx]
+        # log.debug("%s = (%s, %s)  Go %s", cur_loc, graph_dict[cur_loc][0], graph_dict[cur_loc][1], direction)
+        cur_loc = graph_dict[cur_loc][0] if direction == "L" else graph_dict[cur_loc][1]
+        steps += 1
+        if cur_loc == "ZZZ":
+            break
+    results.append(steps)
+    log.debug("*" * 79)
+
+    total_states = len(absorbing_states) + len(non_absorbing_states)
+    transition_matrix = np.zeros((total_states, total_states))
+    # fill in the matrix with all the non_absorbing_states and keep track of which row/col is which
+    for state, lr_tuple in non_absorbing_states.items():
+        for new_state in lr_tuple:
+            transition_matrix[state_indices[state]][state_indices[new_state]] += .5
+    for state, lr_tuple in absorbing_states.items():
+        for new_state in lr_tuple:
+            transition_matrix[state_indices[state]][state_indices[new_state]] += .5
+
+    log.debug("")
+    log.debug("Transition Matrix")
+    log.debug(transition_matrix)
+    # Calculate the fundamental matrix N =  (I - Q) ^ -1
+    # Q represents the transitions between the non-absorbing states
+    # R represents the transitions between absorbing states and non-absorbing states
+    q_ = transition_matrix[0:len(non_absorbing_states), 0:len(non_absorbing_states)]
+    log.debug("*********** Q ************")
+    log.debug(q_)
+    r_ = transition_matrix[0:len(non_absorbing_states) , len(non_absorbing_states): total_states]
+    log.debug("*********** R ************")
+    log.debug(r_)
+    # n = np.linalg.inv(np.eye(len(non_absorbing_states)) - q)
+    # log.debug("*********** N ************")
+    # log.debug(n)
+    # nr = np.dot(n, r)
+    # log.debug("*********** NR ************")
+    # log.debug(nr)
+
+    # Initialize N as the identity matrix
+    n_ = np.eye(q_.shape[0])
+    log.debug("*********** N ************")
+    log.debug(n_)
+
+    # Iterate until n converges
+    while True:
+        n_next = np.eye(q_.shape[0]) + np.dot(q_, n_)
+        if np.allclose(n_, n_next):
+            break
+        n_ = n_next
+        log.debug("*********** N ************")
+        log.debug(n_)
+
+    # Calculate the expected number of steps to absorption
+    steps = np.dot(n_, np.sum(r_, axis=1))
+    # results.append(steps)
 
     return display_results(day=day, results=results, log=log)
 
